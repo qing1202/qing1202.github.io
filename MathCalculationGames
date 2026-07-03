@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学急速配对挑战</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap');
+        
+        body {
+            font-family: 'Lexend', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);
+            overflow-x: hidden;
+        }
+
+        /* 霓虹发光效果 */
+        .neon-border {
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+        .neon-text-blue {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+        }
+        .neon-text-green {
+            text-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+        }
+
+        /* 自定义过渡与动画 */
+        .pop-card {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .pop-card:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        .shake-animation {
+            animation: shake 0.2s ease-in-out 2;
+        }
+
+        @keyframes pulse-fast {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        .pulse-warning {
+            animation: pulse-fast 0.5s infinite;
+        }
+
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between text-slate-100 p-4 relative select-none">
+
+    <!-- 粒子特效画布 -->
+    <canvas id="particleCanvas" class="absolute inset-0 pointer-events-none z-0"></canvas>
+
+    <!-- 顶部状态栏 -->
+    <header class="w-full max-w-4xl flex justify-between items-center z-10 py-2 px-4 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-700/50 mb-4">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 p-2.5 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-calculator text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-extrabold tracking-wider bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">数学急速配对</h1>
+                <p class="text-[10px] text-slate-400">答对得2分 · 30分通关</p>
+            </div>
+        </div>
+
+        <!-- 分数与音效控制 -->
+        <div class="flex items-center space-x-4">
+            <div class="text-right">
+                <span class="text-xs text-slate-400 block">当前分数</span>
+                <span id="scoreBadge" class="text-2xl font-black text-indigo-400 tracking-tight">0 <span class="text-xs text-slate-500">/ 30</span></span>
+            </div>
+            <button id="soundToggleBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2.5 rounded-xl transition duration-200 border border-slate-700">
+                <i id="soundIcon" class="fa-solid fa-volume-high text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主游戏区 -->
+    <main class="w-full max-w-4xl flex-grow flex flex-col justify-center items-center z-10 py-2">
+        
+        <!-- 准备/欢迎界面 -->
+        <div id="startScreen" class="w-full max-w-md bg-slate-900/80 backdrop-blur-lg border border-slate-800 rounded-3xl p-8 text-center shadow-2xl neon-border transition-all duration-300">
+            <div class="w-20 h-20 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/20 transform rotate-3">
+                <i class="fa-solid fa-bolt-lightning text-4xl text-white"></i>
+            </div>
+            <h2 class="text-2xl font-black mb-3 text-white">速算挑战赛</h2>
+            <p class="text-slate-300 text-sm mb-6 leading-relaxed">
+                屏幕左侧会出现一道数学算式，右侧有四个选项。在 <span class="text-amber-400 font-bold">10秒</span> 内找出唯一正确的答案配对！
+            </p>
+            <div class="bg-slate-950/60 rounded-2xl p-4 mb-8 text-left border border-slate-800 text-xs space-y-2">
+                <div class="flex items-center text-emerald-400">
+                    <i class="fa-solid fa-check-circle mr-2"></i>
+                    <span>每答对一题获得 <strong class="text-white">2 分</strong></span>
+                </div>
+                <div class="flex items-center text-indigo-400">
+                    <i class="fa-solid fa-trophy mr-2"></i>
+                    <span>达到 <strong class="text-white">30 分</strong> 即可获得最终胜利！</span>
+                </div>
+                <div class="flex items-center text-rose-400">
+                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+                    <span>超时或答错将结束游戏</span>
+                </div>
+            </div>
+            <button id="startBtn" class="w-full py-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/25 transform transition active:scale-95 duration-200">
+                开始挑战 <i class="fa-solid fa-play ml-2"></i>
+            </button>
+        </div>
+
+        <!-- 核心答题游玩区 -->
+        <div id="gamePlayScreen" class="hidden w-full flex flex-col items-center">
+            
+            <!-- 计时条区 -->
+            <div class="w-full max-w-2xl mb-8">
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <span id="timerLabel" class="text-sm font-semibold text-indigo-300 flex items-center">
+                        <i class="fa-regular fa-clock mr-1.5"></i> 剩余时间
+                    </span>
+                    <span id="timerText" class="text-base font-extrabold text-indigo-400">10.0s</span>
+                </div>
+                <div class="w-full h-3.5 bg-slate-950 rounded-full overflow-hidden p-[2px] border border-slate-800">
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-100 ease-linear" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <!-- 配对主板块 (左题目 右答案) -->
+            <div class="w-full grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch max-w-4xl px-2">
+                
+                <!-- 左侧: 问题卡片 -->
+                <div class="md:col-span-6 flex flex-col justify-center items-center bg-slate-900/60 backdrop-blur-md rounded-3xl border-2 border-indigo-500/30 p-8 min-h-[220px] md:min-h-[320px] relative shadow-xl">
+                    <div class="absolute top-4 left-4 px-3 py-1 bg-indigo-950/80 border border-indigo-500/30 text-xs text-indigo-300 rounded-full">
+                        算式
+                    </div>
+                    
+                    <!-- 算式文本 -->
+                    <div id="equationDisplay" class="text-4xl md:text-5xl font-black text-white tracking-widest leading-none my-auto select-none">
+                        12 + 5 = ?
+                    </div>
+                </div>
+
+                <!-- 右侧: 四个备选答案 -->
+                <div class="md:col-span-6 grid grid-cols-2 gap-4">
+                    <button class="answer-btn pop-card bg-slate-900/50 hover:bg-slate-800/80 active:bg-indigo-950/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 flex flex-col justify-center items-center group relative min-h-[100px] md:min-h-[150px] shadow-lg transition duration-200" data-index="0">
+                        <span class="absolute top-2 left-2 text-[10px] text-slate-500 group-hover:text-indigo-400 font-bold transition">A</span>
+                        <span class="option-val text-3xl font-extrabold text-slate-200 group-hover:text-white transition">0</span>
+                    </button>
+                    <button class="answer-btn pop-card bg-slate-900/50 hover:bg-slate-800/80 active:bg-indigo-950/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 flex flex-col justify-center items-center group relative min-h-[100px] md:min-h-[150px] shadow-lg transition duration-200" data-index="1">
+                        <span class="absolute top-2 left-2 text-[10px] text-slate-500 group-hover:text-indigo-400 font-bold transition">B</span>
+                        <span class="option-val text-3xl font-extrabold text-slate-200 group-hover:text-white transition">0</span>
+                    </button>
+                    <button class="answer-btn pop-card bg-slate-900/50 hover:bg-slate-800/80 active:bg-indigo-950/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 flex flex-col justify-center items-center group relative min-h-[100px] md:min-h-[150px] shadow-lg transition duration-200" data-index="2">
+                        <span class="absolute top-2 left-2 text-[10px] text-slate-500 group-hover:text-indigo-400 font-bold transition">C</span>
+                        <span class="option-val text-3xl font-extrabold text-slate-200 group-hover:text-white transition">0</span>
+                    </button>
+                    <button class="answer-btn pop-card bg-slate-900/50 hover:bg-slate-800/80 active:bg-indigo-950/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 flex flex-col justify-center items-center group relative min-h-[100px] md:min-h-[150px] shadow-
